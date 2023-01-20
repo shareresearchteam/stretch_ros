@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Import the FollowJointTrajectoryGoal from the control_msgs.msg package to
 # control the Stretch robot
+import rospy
 from control_msgs.msg import FollowJointTrajectoryGoal
 
 # Import JointTrajectoryPoint from the trajectory_msgs package to define
@@ -25,10 +26,10 @@ class MultiPointCommand(hm.HelloNode):
 		"""
 		hm.HelloNode.__init__(self)
 		converted_shape = []
-		prev_point = [0.2,0]
 		for point in shape:
 			trajectory = JointTrajectoryPoint()
-			trajectory.positions = [point[0], point[1],1.7]
+			print(point[3	])
+			trajectory.positions = [point[0], point[1],point[2], point[3], point[4]]
 			converted_shape.append(trajectory)
 		self.path = converted_shape
 
@@ -46,7 +47,7 @@ class MultiPointCommand(hm.HelloNode):
 		# the joint names as a list
 
 		trajectory_goal = FollowJointTrajectoryGoal()
-		trajectory_goal.trajectory.joint_names = ['wrist_extension','joint_lift', 'joint_wrist_yaw']
+		trajectory_goal.trajectory.joint_names = ['wrist_extension','joint_lift', 'joint_wrist_yaw','joint_head_tilt','joint_head_pan']
 
 		# Then trajectory_goal.trajectory.points is defined by a list of the joint
 		# trajectory points
@@ -72,13 +73,14 @@ class MultiPointCommand(hm.HelloNode):
 		hm.HelloNode.main(self, 'multipoint_command', 'multipoint_command', wait_for_first_pointcloud=False)
 		rospy.loginfo('issuing multipoint command...')
 		self.issue_multipoint_command()
-		time.sleep(2)
+		rospy.sleep(2)
 
 if __name__ == '__main__':
+    pi = 3.14
+    length = 0.06
     try:
-		
         # Instanstiate a `MultiPointCommand()` object and execute the main() method
-        pointlist = [[0,0.5,-0.4],[0,0.8,-0.4],[0.2,0.8,2.2],[0.2,0.7,2.2],[0.2,0.8,2.2], [0,0.8,-0.4], [0,0.5,-0.4]]
+        pointlist = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],[0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],[length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
         
         node = MultiPointCommand(shape=pointlist)
         node.main()
