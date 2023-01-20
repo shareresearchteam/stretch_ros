@@ -134,7 +134,8 @@ class ArucoNavigationNode(hm.HelloNode):
             try:
                 rospy.loginfo('LOOKING FOR THIS TAG: ')
                 rospy.loginfo(requested_tag)
-                self.translation, self.rotation = self.tf_listener.lookupTransform(requested_tag, 'base_link', rospy.Time(0))
+                transform = self.tf_buffer.lookup_transform('base_link', requested_tag, rospy.Time())
+                #self.translation, self.rotation = self.tf_listener.lookupTransform(requested_tag, 'base_link', rospy.Time(0))
                 rospy.loginfo("Found Requested Tag")
                 
                 found_tag = True
@@ -189,7 +190,7 @@ class ArucoNavigationNode(hm.HelloNode):
             msg.pose.orientation.w = self.rotation[3]
 
             saved_file = open(self.file_path + "/saved_poses.json","w")
-            self.pose_dict[pose_name.lower()] = (msg)
+            self.pose_dict[pose_name.lower()] = msg
             json.dump(self.pose_dict,saved_file)
             saved_file.close()
 
@@ -279,7 +280,7 @@ class ArucoNavigationNode(hm.HelloNode):
 
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
         self.client.wait_for_server()
-
+        self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf.TransformListener()
         self.switch_to_position_mode = rospy.ServiceProxy('/switch_to_position_mode', Trigger)
         self.switch_to_navigation_mode = rospy.ServiceProxy('/switch_to_navigation_mode', Trigger)

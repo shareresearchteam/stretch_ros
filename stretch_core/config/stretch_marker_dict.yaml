@@ -66,7 +66,27 @@
     'length_mm': 86
     'use_rgb_only': False
     'name': 'user_pointer'
-    'link': 'None'
+    'link': None
+  '1':
+    'length_mm': 190
+    'use_rgb_only': False
+    'name': 'nav_1'
+    'link': None
+  '2':
+    'length_mm': 190
+    'use_rgb_only': False
+    'name': 'nav_2'
+    'link': None
+  '3':
+    'length_mm': 190
+    'use_rgb_only': False
+    'name': 'nav_3'
+    'link': None
+  '4':
+    'length_mm': 190
+    'use_rgb_only': False
+    'name': 'table'
+    'link': None
   'default':
     'length_mm': 24
     'use_rgb_only': False

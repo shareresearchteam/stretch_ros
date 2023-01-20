@@ -41,7 +41,7 @@ class Pose():
     @classmethod
     def from_dictionary(cls, dict):
         return cls(id=dict[0], pos_x=dict[1],pos_y=dict[2],
-        pos_x=dict[3],ori_x=dict[4],ori_y=dict[5], ori_z=dict[6],
+        pos_z=dict[3],ori_x=dict[4],ori_y=dict[5], ori_z=dict[6],
         ori_w=dict[7])
 
     def poseMsg(self):
@@ -95,7 +95,7 @@ class ArucoNavigationNode(hm.HelloNode):
         input: pose - PostStamped msg
         """
         return Pose(id = msg.header.frame_id, pos_x = msg.pose.position.x, pos_y =msg.pose.position.y,
-              pos_z = msg.pose.position.z, ori_x = msg.pose.orentation.x, ori_y = msg.pose.orientation.y, 
+              pos_z = msg.pose.position.z, ori_x = msg.pose.orientation.x, ori_y = msg.pose.orientation.y, 
               ori_z = msg.pose.orientation.z, ori_w = msg.pose.orientation.w)
     
     def joint_states_callback(self, joint_state):
@@ -113,7 +113,7 @@ class ArucoNavigationNode(hm.HelloNode):
         joint_state = self.joint_state
         #If joint info and command exists
         if (joint_state is not None) and (command is not None):
-            point = JointTrajectoryPoint
+            point = JointTrajectoryPoint()
             point.time_from_start = rospy.Duration(0.0)
             trajectory_goal = FollowJointTrajectoryGoal()
             trajectory_goal.goal_time_tolerance = rospy.Time(1.0)
@@ -126,12 +126,15 @@ class ArucoNavigationNode(hm.HelloNode):
                 new_value = inc
             #Based on change in value 
             elif 'delta' in command:
+                rospy.loginfo('Rotating %s', joint_name)
+                
                 #Check index and get value from position list
                 joint_index = joint_state.name.index(joint_name)
                 joint_value = joint_state.position[joint_index]
                 delta = command['delta']
                 #Add delta to joint_value
                 new_value = joint_value + delta
+                rospy.loginfo('To position %s', new_value)
             #Update location you wanna be at and move
             point.positions = [new_value]
             trajectory_goal.trajectory.points = [point]
@@ -144,8 +147,8 @@ class ArucoNavigationNode(hm.HelloNode):
         Pans the head at three tilt angles to search for the requested frame (usually either the name of an aruco tag or "map"). Cycles up for up to two full searches (a total of 6 rotations) before timing 
         out. If the frame is found, a tf_listener finds the pose of the base_link in the requested frame and saves it in the translation and rotation variables for use in the next functions.
         '''    
-        min_rotation = -4.05
-        max_rotation = 1.78
+        min_rotation = -2
+        max_rotation = 1.53
         num_steps = 10
         step = abs(min_rotation - max_rotation) / num_steps
 
@@ -168,8 +171,8 @@ class ArucoNavigationNode(hm.HelloNode):
                 #Class variables stored here 
                 self.translation, self.rotation = self.tf_listener.lookupTransform(requested_tag, 'base_link', rospy.Time(0))
                 rospy.loginfo("Found Requested Tag")
-                
                 found_tag = True
+
             except:
                 
                 # Check if the head has completed a full rotation
@@ -218,7 +221,7 @@ class ArucoNavigationNode(hm.HelloNode):
             msg.pose.orientation.w = self.rotation[3]
 
             saved_file = open(self.file_path + "/saved_poses.json","w")
-            new_pose = msg_to_object(msg)
+            new_pose = self.msg_to_object(msg)
             self.pose_dict[pose_name.lower()] = new_pose.serialize()
             json.dump(self.pose_dict,saved_file)
             saved_file.close()
