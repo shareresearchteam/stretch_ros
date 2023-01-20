@@ -78,7 +78,8 @@ if __name__ == '__main__':
     try:
 		
         # Instanstiate a `MultiPointCommand()` object and execute the main() method
-        pointlist = [[0.5,0.2],[0.2,0.2],[0.2,0.5],[0.5,0.5],[0.5,0.2]]
+        pointlist = [[0,0.5,-0.4],[0,0.8,-0.4],[0.2,0.8,2.2],[0.2,0.7,2.2],[0.2,0.8,2.2], [0,0.8,-0.4], [0,0.5,-0.4]]
+        
         node = MultiPointCommand(shape=pointlist)
         node.main()
     except KeyboardInterrupt:
