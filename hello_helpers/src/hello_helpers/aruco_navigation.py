@@ -237,9 +237,9 @@ class ArucoNavigationNode(hm.HelloNode):
         Finds the requested pose in the saved pose dictionary, and sends a move_base goal to return to the given pose.
         '''
 
-        if self.pose_dict.has_key(pose_name):
+        if pose_name in self.pose_dict:
 
-            pose = {'wrist_extension': 0.01}
+            pose = {'wrist_extension': 0.01} 
             self.move_to_pose(pose)
 
             pose = {'joint_wrist_yaw': 3.3}
