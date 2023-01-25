@@ -169,7 +169,7 @@ class ArucoNavigationNode(hm.HelloNode):
                 rospy.loginfo('LOOKING FOR THIS TAG: ')
                 rospy.loginfo(requested_tag)
                 #Class variables stored here 
-                self.translation, self.rotation = self.tf_listener.lookupTransform(requested_tag, 'base_link', rospy.Time(0))
+                self.translation, self.rotation = self.tf_listener.lookupTransform('base_link', requested_tag, rospy.Time(0))
                 rospy.loginfo("Found Requested Tag")
                 found_tag = True
 
