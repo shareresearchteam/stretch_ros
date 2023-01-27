@@ -165,7 +165,8 @@ class StretchNavigation(hm.HelloNode):
 
 
 if __name__ == '__main__':
+    time.sleep(5)
     rospy.init_node('navigation', argv=sys.argv)
     nav = StretchNavigation()
-    transform = nav.find_tag_one_angle("nav_1")
-    nav.go_to(transform.transform.translation.x, transform.transform.translation.y, 0.0)
+    transform = nav.find_tag_one_angle("nav_2")
+    nav.go_to(transform.transform.translation.x, transform.transform.translation.y, transform.transform.rotation.z)
