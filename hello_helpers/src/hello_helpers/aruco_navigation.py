@@ -20,7 +20,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 
 import actionlib
 from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
-
+import navigation as nav
 
 class Pose():
     """
@@ -78,7 +78,8 @@ class ArucoNavigationNode(hm.HelloNode):
         self.rotation = None 
         self.joint_state = None 
         self.file_path = rospy.get_param('/file_path')
-        self.transform_pub = rospy.Publisher('ArUco_transform', PoseStamped, queue_size=10)
+        self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=10)
+        self.navstack = nav.StretchNavigation()
 
         #Attempt to access current saved poses in saved_poses.json, if fail set to empty
         try:
@@ -170,7 +171,7 @@ class ArucoNavigationNode(hm.HelloNode):
                 rospy.loginfo('LOOKING FOR THIS TAG: ')
                 rospy.loginfo(requested_tag)
                 #Class variables stored here 
-                self.translation, self.rotation = self.tf_listener.lookupTransform('base_link', requested_tag, rospy.Time(0))
+                self.translation, self.rotation = self.tf_listener.lookupTransform(requested_tag, 'base_link', rospy.Time(0))
                 rospy.loginfo("Found Requested Tag")
                 found_tag = True
 
@@ -212,7 +213,7 @@ class ArucoNavigationNode(hm.HelloNode):
         step = abs(min_rotation - max_rotation) / num_steps
 
         #Set intial pose of camera
-        pose = {'joint_head_tilt': -2*pi/4, 'joint_head_pan': 0}
+        pose = {'joint_head_tilt': -pi/4, 'joint_head_pan': 0}
         self.move_to_pose(pose)
         #Breaks out of while
         found_tag = False
@@ -221,14 +222,15 @@ class ArucoNavigationNode(hm.HelloNode):
 
         #Check if tag is in view
         try:
-            new_pose = self.tf_buffer.transform('base_link',
-                                                 tag_name,
-                                                 rospy.Time())
-            rospy.loginfo("Found Requested Tag: \n%s", new_pose)
-            self.transform_pub.publish(new_pose)
-            return new_pose
+            transform = self.tf_buffer.lookup_transform('base_link',tag_name,rospy.Time(0))
+            translation = transform.transform.translation
+            rotation = transform.transform.rotation
+            rospy.loginfo("Found Requested Tag: \n%s", transform)
+
+            return transform
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                pass
+            rospy.loginfo("Problem finding tag")    
+            pass
 
         # self.switch_to_navigation_mode()
         return None
@@ -276,38 +278,18 @@ class ArucoNavigationNode(hm.HelloNode):
         self.move_to_pose(pose)
         pose = {'joint_wrist_yaw': 3.3}
         self.move_to_pose(pose)
-        pose = {'joint_lift': 0.22}
+        pose = {'joint_lift': 0.35}
         self.move_to_pose(pose)
         
         #Find relevant tag
         pose_goal = self.find_tag_one_angle("nav_1")
+        print(type(pose_goal))
         if pose_goal is None:
             rospy.loginfo("Aruco not found")
 
-        map_goal = MoveBaseGoal()
-        while True:
-            try:
-                map_goal.target_pose = self.tf_buffer.transform(pose_goal, 'map', rospy.Duration(0))
-                rospy.loginfo(map_goal)
-                self.client.send_goal(map_goal)
-                rospy.loginfo("Updated Goal")
-            except: 
-                rospy.loginfo("Problem finding transform")
-                rospy.loginfo("Keeping old goal based on last seen")
-                self.client.wait_for_client()
-                return False 
-            """
-            map_goal.target_pose.pose.position.z = 0.0
-            eul = tf.transformations.euler_from_quaternion((map_goal.target_pose.pose.orientation.x,
-             map_goal.target_pose.pose.orientation.y,
-             map_goal.target_pose.pose.orientation.z, map_goal.target_pose.pose.orientation.w))
-            quat = tf.transformations.quaternion_from_euler(0.0, 0.0, eul[2])
-            map_goal.target_pose.pose.orientation.x = quat[0]
-            map_goal.target_pose.pose.orientation.y = quat[1]
-            map_goal.target_pose.pose.orientation.z = quat[2]
-            map_goal.target_pose.pose.orientation.w = quat[3]
-            """
-            return True
+        self.navstack.go_to(pose_goal.transform.translation.x. pose_goal.transform.translation.y, 1.2)
+        
+
     
     def main(self):
         hm.HelloNode.main(self, 'save_pose', 'save_pose', wait_for_first_pointcloud=False)
@@ -316,20 +298,20 @@ class ArucoNavigationNode(hm.HelloNode):
 
         rospy.Subscriber('/stretch/joint_states', JointState, self.joint_states_callback)
 
-        self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-        self.client.wait_for_server()
+        #self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+        #self.client.wait_for_server()
 
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.tf_buffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tf_buffer)
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
 
         self.switch_to_position_mode = rospy.ServiceProxy('/switch_to_position_mode', Trigger)
         self.switch_to_navigation_mode = rospy.ServiceProxy('/switch_to_navigation_mode', Trigger)
         rate = rospy.Rate(1) # 10hz
-        while not rospy.is_shutdown():
-            self.go_to_pose("")
-            rate.sleep()
+        #while not rospy.is_shutdown():
+        self.go_to_pose("")
+        rate.sleep()
 
 
           
