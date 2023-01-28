@@ -79,7 +79,7 @@ class ArucoNavigationNode(hm.HelloNode):
         self.joint_state = None 
         self.file_path = rospy.get_param('/file_path')
         self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=10)
-        self.navstack = nav.StretchNavigation()
+       
 
         #Attempt to access current saved poses in saved_poses.json, if fail set to empty
         try:
@@ -226,7 +226,8 @@ class ArucoNavigationNode(hm.HelloNode):
             translation = transform.transform.translation
             rotation = transform.transform.rotation
             rospy.loginfo("Found Requested Tag: \n%s", transform)
-
+            self.transform_pub.publish(transform)
+	   
             return transform
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             rospy.loginfo("Problem finding tag")    
@@ -309,9 +310,9 @@ class ArucoNavigationNode(hm.HelloNode):
         self.switch_to_position_mode = rospy.ServiceProxy('/switch_to_position_mode', Trigger)
         self.switch_to_navigation_mode = rospy.ServiceProxy('/switch_to_navigation_mode', Trigger)
         rate = rospy.Rate(1) # 10hz
-        #while not rospy.is_shutdown():
-        self.go_to_pose("")
-        rate.sleep()
+        while not rospy.is_shutdown():
+            self.find_tag_one_angle("nav_3")
+            rate.sleep()
 
 
           

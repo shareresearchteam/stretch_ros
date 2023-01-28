@@ -170,3 +170,5 @@ if __name__ == '__main__':
     nav = StretchNavigation()
     transform = nav.find_tag_one_angle("nav_2")
     nav.go_to(transform.transform.translation.x, transform.transform.translation.y, transform.transform.rotation.z)
+    transform = nav.find_tag_one_angle("nav_3")
+    nav.go_to(transform.transform.translation.x, transform.transform.translation.y, transform.transform.rotation.z)
