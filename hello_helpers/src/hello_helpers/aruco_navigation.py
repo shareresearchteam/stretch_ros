@@ -22,52 +22,7 @@ import actionlib
 from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
 import navigation as nav
 
-class Pose():
-    """
-    Stores and converts PoseStamped messages 
-    """
-    def __init__(self, **kwargs):
-        self.id = kwargs.get("id")
-        #Positional attributes
-        self.pos_x = kwargs.get("pos_x")
-        self.pos_y = kwargs.get("pos_y")
-        self.pos_z = kwargs.get("pos_z")
-        #Orientation attributes
-        self.ori_x = kwargs.get("ori_x")
-        self.ori_y = kwargs.get("ori_y")
-        self.ori_z = kwargs.get("ori_z")
-        self.ori_w = kwargs.get("ori_w")
 
-    @classmethod
-    def from_dictionary(cls, dict):
-        return cls(id=dict[0], pos_x=dict[1],pos_y=dict[2],
-        pos_z=dict[3],ori_x=dict[4],ori_y=dict[5], ori_z=dict[6],
-        ori_w=dict[7])
-
-    def poseMsg(self):
-        msg = PoseStamped()
-        msg.header.frame_id = self.id
-            
-        msg.pose.position.x = self.pos_x
-        msg.pose.position.y = self.pos_y
-        msg.pose.position.z = self.pos_z
-
-        msg.pose.orientation.x = self.ori_x
-        msg.pose.orientation.y = self.ori_x
-        msg.pose.orientation.z = self.ori_x
-        msg.pose.orientation.w = self.ori_x
-        return msg
-
-    def serialize(self):
-        return [self.id,
-            self.pos_x,
-            self.pos_y,
-            self.pos_z,
-            self.ori_x,
-            self.ori_y,
-            self.ori_z,
-            self.ori_w
-        ]
 
 class ArucoNavigationNode(hm.HelloNode):
     def __init__(self):
@@ -79,6 +34,7 @@ class ArucoNavigationNode(hm.HelloNode):
         self.joint_state = None 
         self.file_path = rospy.get_param('/file_path')
         self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=10)
+        #self.angle_pub = rospy.Publisher('Camera_Angle', TransformStamped, queue_size=10)
        
 
         #Attempt to access current saved poses in saved_poses.json, if fail set to empty
@@ -91,15 +47,6 @@ class ArucoNavigationNode(hm.HelloNode):
         
         self.main() 
 
-    def msg_to_object(self, msg):
-        """
-        Converts PoseStamped message into a Pose object (to be later saved as dictionary entry)
-        input: pose - PostStamped msg
-        """
-        return Pose(id = msg.header.frame_id, pos_x = msg.pose.position.x, pos_y =msg.pose.position.y,
-              pos_z = msg.pose.position.z, ori_x = msg.pose.orientation.x, ori_y = msg.pose.orientation.y, 
-              ori_z = msg.pose.orientation.z, ori_w = msg.pose.orientation.w)
-    
     def joint_states_callback(self, joint_state):
         '''
         Callback for the /stretch/joint_states topic to store the current joint states for use within the class
@@ -223,9 +170,14 @@ class ArucoNavigationNode(hm.HelloNode):
         #Check if tag is in view
         try:
             transform = self.tf_buffer.lookup_transform('base_link',tag_name,rospy.Time(0))
+            camera_transform = self.tf2_buffer.lookup_transform('camera_link', tag_name, rospy.Time(0))
+            x_axis = tf.Vector3(1,0,0)
+            camera_angle = camera_transform.transform.angle(x_axis)
+            rospy.loginfo("Desired camera angle %s", camera_angle)
             translation = transform.transform.translation
             rotation = transform.transform.rotation
             rospy.loginfo("Found Requested Tag: \n%s", transform)
+            #self.angle_pub.pushlish()
             self.transform_pub.publish(transform)
 	   
             return transform

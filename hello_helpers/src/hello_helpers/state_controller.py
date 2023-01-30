@@ -16,7 +16,7 @@ class StateController():
         """
         if msg.data != self.current_state and not self.in_progress:
             #Update the in progress check
-            self.next_state_publisher.publish(state_manager())
+            self.next_state_publisher.publish(self.state_manager(msg.data))
 
 
 
@@ -31,14 +31,13 @@ class StateController():
         """
         Pushes the next state
         """
-        match state:
-            case "first":
+        if state == "nav_1":
                 self.nav_check_publisher.publish(True)
-                return "second"
-            case "second":
+                return "nav_2"
+        elif state == "nav_2":
                 self.nav_check_publisher.publish(True)
-                return "third"
-            case _:
+                return "nav_3"
+        else:
                 self.nav_check_publisher.publish(False)
                 return "table"
         
