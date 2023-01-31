@@ -16,12 +16,13 @@ import tf2_geometry_msgs
 from geometry_msgs.msg import TransformStamped, PoseStamped
 from sensor_msgs.msg import JointState
 from control_msgs.msg import FollowJointTrajectoryGoal
-from trajectory_msgs.msg import JointTrajectoryPoint
-
+from trajectory_msgs.msg import JointTrajectoryPoint 
 import actionlib
 from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
 import navigation as nav
-
+import math 
+from std_msgs.msg import Float32
+import numpy as np 
 
 
 class ArucoNavigationNode(hm.HelloNode):
@@ -33,8 +34,8 @@ class ArucoNavigationNode(hm.HelloNode):
         self.rotation = None 
         self.joint_state = None 
         self.file_path = rospy.get_param('/file_path')
-        self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=10)
-        #self.angle_pub = rospy.Publisher('Camera_Angle', TransformStamped, queue_size=10)
+        self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=1)
+        self.camera_angle_publisher = rospy.Publisher('Camera_Angle', Float32, queue_size=1)
        
 
         #Attempt to access current saved poses in saved_poses.json, if fail set to empty
@@ -102,8 +103,8 @@ class ArucoNavigationNode(hm.HelloNode):
         step = abs(min_rotation - max_rotation) / num_steps
 
         #Set intial pose of camera
-        pose = {'joint_head_tilt': -2*pi/4, 'joint_head_pan': min_rotation}
-        self.move_to_pose(pose)
+        #pose = {'joint_head_tilt': -2*pi/4, 'joint_head_pan': min_rotation}
+        #self.move_to_pose(pose)
         #Breaks out of while
         found_tag = False
         #Limits time
@@ -150,7 +151,7 @@ class ArucoNavigationNode(hm.HelloNode):
         return True
 
     def find_tag_one_angle(self, tag_name):
-        '''
+        '''magX = x1*x1 + x2*x2 + x3*x3 
         Pans the head at three tilt angles to search for the requested frame (usually either the name of an aruco tag or "map"). Cycles up for up to two full searches (a total of 6 rotations) before timing 
         out. If the frame is found, a tf_listener finds the pose of the base_link in the requested frame and saves it in the translation and rotation variables for use in the next functions.
         '''    
@@ -160,24 +161,28 @@ class ArucoNavigationNode(hm.HelloNode):
         step = abs(min_rotation - max_rotation) / num_steps
 
         #Set intial pose of camera
-        pose = {'joint_head_tilt': -pi/4, 'joint_head_pan': 0}
-        self.move_to_pose(pose)
+        #pose = {'joint_head_tilt': -pi/4, 'joint_head_pan': 0}
+        #self.move_to_pose(pose)
         #Breaks out of while
-        found_tag = False
+        #found_tag = False
         #Limits time
         count = 0
 
         #Check if tag is in view
         try:
-            transform = self.tf_buffer.lookup_transform('base_link',tag_name,rospy.Time(0))
-            camera_transform = self.tf2_buffer.lookup_transform('camera_link', tag_name, rospy.Time(0))
-            x_axis = tf.Vector3(1,0,0)
-            camera_angle = camera_transform.transform.angle(x_axis)
+            transform = self.tf_buffer.lookup_transform(tag_name,'base_link',rospy.Time(0))
+            camera_transform = self.tf2_buffer.lookup_transform(tag_name,'camera_link', rospy.Time(0))
+            print(transform)
+            print(camera_transform)
+            camera_angle = angle_between((transform.transform.translation.x,0),
+                                         (camera_transform.transform.translation.x,camera_transform.transform.translation.z,))
+            #self.angle_solver(transform.transform, camera_transform.transform)
+
             rospy.loginfo("Desired camera angle %s", camera_angle)
             translation = transform.transform.translation
             rotation = transform.transform.rotation
-            rospy.loginfo("Found Requested Tag: \n%s", transform)
-            #self.angle_pub.pushlish()
+            #rospy.loginfo("Found Requested Tag: \n%s", transform)
+            self.camera_angle_publisher.publish(camera_angle)
             self.transform_pub.publish(transform)
 	   
             return transform
@@ -188,6 +193,20 @@ class ArucoNavigationNode(hm.HelloNode):
         # self.switch_to_navigation_mode()
         return None
 
+    def angle_solver(self, transform_one, transform_two):
+        x = transform_one.translation
+        x1 = x.x
+        x2 = x.y
+        x3 = x.z
+        y = transform_two.translation
+        y1 = y.x
+        y2 = y.y
+        y3 = y.z
+        dotProduct = x1*y1 + x2*y2 + x3*y3 
+        magX = x1*x1 + x2*x2 + x3*x3 
+        magY = y1*y1 + y2*y2 + y3*y3
+        cosine = dotProduct/ (magX*magY)
+        return pi/2 - math.acos(cosine)
 
 
     def save_pose(self, pose_name, aruco_name):
@@ -266,8 +285,24 @@ class ArucoNavigationNode(hm.HelloNode):
             self.find_tag_one_angle("nav_3")
             rate.sleep()
 
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
 
-          
+def angle_between(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+            >>> angle_between((1, 0, 0), (0, 1, 0))
+            1.5707963267948966
+            >>> angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            >>> angle_between((1, 0, 0), (-1, 0, 0))
+            3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+         
 if __name__ == '__main__':
     
     node = ArucoNavigationNode()

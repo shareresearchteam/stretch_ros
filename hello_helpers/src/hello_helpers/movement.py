@@ -13,6 +13,8 @@ class Move:
 		:param self: The self reference.
 		"""
 		self.temp_bool = False
+		self.distance = 0
+		self.rotation = 0
 		self.aruco_subscriber = rospy.Subscriber('ArUco_transform', TransformStamped, self.arucoTransformCallback)
 		self.pub = rospy.Publisher('/stretch/cmd_vel', Twist, queue_size=1) #/stretch_diff_drive_controller/cmd_vel for gazebo
 
@@ -32,17 +34,15 @@ class Move:
 		command.angular.z = 0.0
 		self.pub.publish(command)
 	
-	def moveUpCondition(self, distance):
-		rospy.loginfo(self.temp_bool)
-		if not self.temp_bool:
+	def decide(self):
+		if self.distance < -0.35:
 			self.move_forward()
-			time = distance/0.3
-			start_time = rospy.Time.now()
-			while rospy.Time.now() < start_time + rospy.Duration.from_sec(time):
-			    self.move_forward()
-			    time.sleep(.25)
-			self.stop()
-			self.temp_bool = True
+
+	def moveUpCondition(self):
+		rospy.loginfo(self.temp_bool)
+		while self.distance > 0.1:
+			self.move_forward()
+			rospy.sleep()
 		    
 	
 	def stop(self):
@@ -64,14 +64,18 @@ class Move:
 		target aruco tag location.
 		Returns  
 		"""
-		rospy.loginfo("Received this info %s", msg)
-		self.moveUpCondition(msg.transform.translation.x)
-	
-	
+		self.distance = msg.transform.translation.x
+		self.rotate = msg.transform.rotation.z
+		rospy.loginfo(self.distance)
+		
+	def main(self):
+		while not rospy.is_shutdown():
+			self.move_forward()
 
 if __name__ == '__main__':
-	rospy.init_node('move')
-	base_motion = Move()
-	rate = rospy.Rate(10)
-	while not rospy.is_shutdown():
-		rospy.spin()
+	try:
+		rospy.init_node('movement')
+		node = Move()
+		node.main()
+	except KeyboardInterrupt:
+		rospy.loginfo("Keyboard Interrupt Shutting Down ")
