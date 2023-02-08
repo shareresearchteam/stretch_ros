@@ -57,6 +57,8 @@ class Move:
 		command.angular.x = 0.0
 		command.angular.y = 0.0
 		command.angular.z = 0.05
+		if negative: 
+			command.angular.z = -0.05
 		self.pub.publish(command)
 	
 	def decide(self):
