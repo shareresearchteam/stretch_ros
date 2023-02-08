@@ -38,6 +38,7 @@ class ArucoNavigationNode(hm.HelloNode):
         self.next_state = None 
 
         self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=1)
+        self.base_angle_publisher = rospy.Publisher('Base_Angle', Float32, queue_size=1)
         self.camera_angle_publisher = rospy.Publisher('Camera_Angle', Float32, queue_size=1)
         self.next_state_subscriber = rospy.Subscriber('actions/next_state', StateMessage, self.next_state_callback)
 
@@ -46,30 +47,37 @@ class ArucoNavigationNode(hm.HelloNode):
         """"
         Callback for the next_state topic to store current state information
         """
-        rospy.loginfo("Updating Next State")
+        #rospy.loginfo("Updating Next State")
         self.next_state = State.fromMsg(msg)
 
     def handleTransforms(self, tag_name):
+            """
+            Gets transform vectors from aruco to base and aruco to camera, computes angle between them. Publishes transforms and camera angle needed
+            to center on aruco tag 
+            """
             #Get vectors to point from camera and base
-            base_transform = self.tf_buffer.lookup_transform(tag_name,'base_link',rospy.Time(0))
-            camera_transform = self.tf_buffer.lookup_transform(tag_name,'camera_link', rospy.Time(0))
+            center_base_transform = self.tf_buffer.lookup_transform('centered_base_link','base_link', rospy.Time(0))
+            base_transform:TransformStamped = self.tf_buffer.lookup_transform(tag_name,'centered_base_link',rospy.Time(0))
+            camera_transform:TransformStamped = self.tf_buffer.lookup_transform(tag_name,'camera_link', rospy.Time(0))
             #Get angle between vectors
+
             camera_angle = angle_between((base_transform.transform.translation.x,0),
                                          (camera_transform.transform.translation.x,camera_transform.transform.translation.z,))
-    
-
-            rospy.loginfo("Desired camera angle %s", camera_angle)
-            #translation = base_transform.transform.translation
-            #rotation = base_transform.transform.rotation
-
+            #The angle the base needs to rotate to move towards
+            
+            center_angle = math.atan(base_transform.transform.translation.y/base_transform.transform.translation.x)
+            rospy.loginfo("Translation x: %s", base_transform.transform.translation.x)
+            rospy.loginfo("Translation y: %s", base_transform.transform.translation.y)
+            rospy.loginfo("Translation z: %s", base_transform.transform.translation.z)
+            
+            rospy.loginfo("center_angle %s", base_transform.transform.rotation.z)
             #Publish camera angle and distances/rotations for other nodes
             self.camera_angle_publisher.publish(camera_angle)
             self.transform_pub.publish(base_transform)
 
-    def find_tag_one_angle(self):
+    def find_tag(self):
         '''  
-        Pans the head at three tilt angles to search for the requested frame (usually either the name of an aruco tag or "map"). Cycles up for up to two full searches (a total of 6 rotations) before timing 
-        out. If the frame is found, a tf_listener finds the pose of the base_link in the requested frame and saves it in the translation and rotation variables for use in the next functions.
+        Sees if aruco tag is in frame and acts accordingly
         '''     
         #Check if tag is in view
         try:
@@ -77,6 +85,10 @@ class ArucoNavigationNode(hm.HelloNode):
             self.handleTransforms(tag_name)
         #Tag not found
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            fakeTransform = TransformStamped()
+            fakeTransform.transform.translation.x = 0
+            fakeTransform.transform.rotation.z = 0
+            self.transform_pub.publish(fakeTransform)
             rospy.loginfo("Problem finding tag")    
             pass
         except AttributeError:
@@ -88,12 +100,9 @@ class ArucoNavigationNode(hm.HelloNode):
     def main(self):
         hm.HelloNode.main(self, 'save_pose', 'save_pose', wait_for_first_pointcloud=False)
 
-        self.r = rospy.Rate(rospy.get_param('~rate', 15.0))
+        self.r = rospy.Rate(rospy.get_param('~rate', 10.0))
 
         rospy.Subscriber('/stretch/joint_states', JointState, self.joint_states_callback)
-
-        #self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-        #self.client.wait_for_server()
 
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.tf_buffer = tf2_ros.Buffer()
@@ -104,7 +113,7 @@ class ArucoNavigationNode(hm.HelloNode):
         self.switch_to_navigation_mode = rospy.ServiceProxy('/switch_to_navigation_mode', Trigger)
         rate = rospy.Rate(1) # 10hz
         while not rospy.is_shutdown():
-            self.find_tag_one_angle()
+            self.find_tag()
             rate.sleep()
 
 def unit_vector(vector):

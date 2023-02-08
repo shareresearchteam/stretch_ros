@@ -52,7 +52,7 @@ class StateController():
         while not rospy.is_shutdown():
             #rospy.loginfo('Is running')
             self.next_state_publisher.publish(self.next_state.toMsg())
-            rospy.loginfo("Next state is %s", self.next_state)
+            #rospy.loginfo("Next state is %s", self.next_state)
             r.sleep()
 
 if __name__ == '__main__':
