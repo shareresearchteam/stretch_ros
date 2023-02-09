@@ -57,7 +57,11 @@ class Move:
 		command.angular.x = 0.0
 		command.angular.y = 0.0
 		command.angular.z = 0.05
+<<<<<<< HEAD:hello_helpers/src/hello_helpers/base_control.py
 		if negative:
+=======
+		if negative: 
+>>>>>>> 387b7d2618c131d4cd23651df6e4970ebd64b634:hello_helpers/src/hello_helpers/movement.py
 			command.angular.z = -0.05
 		self.pub.publish(command)
 	
