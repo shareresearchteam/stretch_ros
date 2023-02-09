@@ -4,12 +4,14 @@ import hello_misc as hm
 # Import the FollowJointTrajectoryGoal from the control_msgs.msg package to
 # control the Stretch robot
 from control_msgs.msg import FollowJointTrajectoryGoal
-
+from geometry_msgs.msg import TransformStamped
 # Import JointTrajectoryPoint from the trajectory_msgs package to define
 # robot trajectories
 from trajectory_msgs.msg import JointTrajectoryPoint
 import math 
 from std_msgs.msg import Float32
+from state import State
+
 class JointControl(hm.HelloNode):
     """
     A simple encapsulation of the navigation stack for a Stretch robot.
@@ -24,8 +26,8 @@ class JointControl(hm.HelloNode):
         self.last_camera_angle = -math.pi/4
         rospy.loginfo('{0}: Made contact with trajectory server'.format(self.__class__.__name__))
         self.camera_angle_subscriber = rospy.Subscriber('Camera_Angle', Float32, self.camera_following_callback)
+        self.base_transform_subsriber = rospy.Subscriber('ArUco_transform', TransformStamped, self.aruco_callback)
 
-        
 
     def camera_following_callback(self, msg):
         rospy.loginfo("Received message: %s", msg)

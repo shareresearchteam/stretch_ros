@@ -2,24 +2,13 @@
 import hello_misc as hm
 
 import rospy
-import logging
-import tf
 import tf2_ros
-import time
 from math import pi, sqrt, atan2
-import json 
-import os 
 
 from std_srvs.srv import Trigger
 
-import tf2_geometry_msgs
-from geometry_msgs.msg import TransformStamped, PoseStamped
+from geometry_msgs.msg import TransformStamped, Transform
 from sensor_msgs.msg import JointState
-from control_msgs.msg import FollowJointTrajectoryGoal
-from trajectory_msgs.msg import JointTrajectoryPoint 
-import actionlib
-from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
-import navigation as nav
 import math 
 from std_msgs.msg import Float32
 import numpy as np 
@@ -33,15 +22,17 @@ class ArucoNavigationNode(hm.HelloNode):
         super().__init__()
         
         self.translation = None
-        self.rotation = None 
-        self.joint_state = None 
-        self.next_state = None 
+        self.rotation = None
+        self.joint_state = None
+        self.next_state = None
 
         self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=1)
-        self.base_angle_publisher = rospy.Publisher('Base_Angle', Float32, queue_size=1)
-        self.camera_angle_publisher = rospy.Publisher('Camera_Angle', Float32, queue_size=1)
-        self.next_state_subscriber = rospy.Subscriber('actions/next_state', StateMessage, self.next_state_callback)
+        self.cam_to_tag_angle_publisher = rospy.Publisher('cam_to_tag_angle', Float32, queue_size=1)
+        self.base_to_tag_angle_publisher = rospy.Publisher('base_to_tag_angle', Float32, queue_size=1)
+        self.base_to_tag_distance_publisher = rospy.Publisher('base_to_tag_distance', Float32, queue_size=1)
+        self.next_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.next_state_callback)
 
+        self.last_transform = Transform()
 
     def next_state_callback(self, msg:StateMessage):
         """"
@@ -55,25 +46,29 @@ class ArucoNavigationNode(hm.HelloNode):
             Gets transform vectors from aruco to base and aruco to camera, computes angle between them. Publishes transforms and camera angle needed
             to center on aruco tag 
             """
-            #Get vectors to point from camera and base
-            center_base_transform = self.tf_buffer.lookup_transform('centered_base_link','base_link', rospy.Time(0))
-            base_transform:TransformStamped = self.tf_buffer.lookup_transform(tag_name,'centered_base_link',rospy.Time(0))
-            camera_transform:TransformStamped = self.tf_buffer.lookup_transform(tag_name,'camera_link', rospy.Time(0))
-            #Get angle between vectors
+            # Get transforms from the tag to the camera and base
+            base_to_tag:TransformStamped = self.tf_buffer.lookup_transform('base_link', tag_name, rospy.Time(0))
+            cam_to_tag:TransformStamped = self.tf_buffer.lookup_transform('camera_link', tag_name, rospy.Time(0))
 
-            camera_angle = angle_between((base_transform.transform.translation.x,0),
-                                         (camera_transform.transform.translation.x,camera_transform.transform.translation.z,))
-            #The angle the base needs to rotate to move towards
-            
-            center_angle = math.atan(base_transform.transform.translation.y/base_transform.transform.translation.x)
-            rospy.loginfo("Translation x: %s", base_transform.transform.translation.x)
-            rospy.loginfo("Translation y: %s", base_transform.transform.translation.y)
-            rospy.loginfo("Translation z: %s", base_transform.transform.translation.z)
-            
-            rospy.loginfo("center_angle %s", base_transform.transform.rotation.z)
-            #Publish camera angle and distances/rotations for other nodes
-            self.camera_angle_publisher.publish(camera_angle)
-            self.transform_pub.publish(base_transform)
+            if (self.last_transform != base_to_tag.transform):
+                # Get angle between the tag and the camera
+                cam_to_tag_angle = math.atan2(-cam_to_tag.transform.translation.z, cam_to_tag.transform.translation.x)
+                # Get angle between the tag and the base
+                base_to_tag_angle = math.atan2(base_to_tag.transform.translation.y, base_to_tag.transform.translation.x)
+                # Get distance between the tag and the base
+                base_to_tag_distance = (base_to_tag.transform.translation.x ** 2 + base_to_tag.transform.translation.y ** 2) ** 0.5
+                
+                self.last_transform = base_to_tag.transform
+            else:
+                # The tf is old; ignore it
+                cam_to_tag_angle = 0
+                base_to_tag_angle = 0
+                base_to_tag_distance = 0
+
+            # Publish all data
+            self.cam_to_tag_angle_publisher.publish(cam_to_tag_angle)
+            self.base_to_tag_angle_publisher.publish(base_to_tag_angle)
+            self.base_to_tag_distance_publisher.publish(base_to_tag_distance)
 
     def find_tag(self):
         '''  
@@ -81,15 +76,13 @@ class ArucoNavigationNode(hm.HelloNode):
         '''     
         #Check if tag is in view
         try:
-            tag_name = self.next_state.name
-            self.handleTransforms(tag_name)
+            # tag_name = self.next_state.name
+            self.handleTransforms("nav_1")
         #Tag not found
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            fakeTransform = TransformStamped()
-            fakeTransform.transform.translation.x = 0
-            fakeTransform.transform.rotation.z = 0
-            self.transform_pub.publish(fakeTransform)
-            rospy.loginfo("Problem finding tag")    
+            self.transform_pub.publish(TransformStamped())
+            self.cam_to_tag_angle_publisher.publish(-math.pi/4)
+            rospy.loginfo("Problem finding tag")
             pass
         except AttributeError:
             rospy.loginfo("State not detected")
@@ -111,7 +104,7 @@ class ArucoNavigationNode(hm.HelloNode):
 
         self.switch_to_position_mode = rospy.ServiceProxy('/switch_to_position_mode', Trigger)
         self.switch_to_navigation_mode = rospy.ServiceProxy('/switch_to_navigation_mode', Trigger)
-        rate = rospy.Rate(1) # 10hz
+        rate = rospy.Rate(10) # 10hz
         while not rospy.is_shutdown():
             self.find_tag()
             rate.sleep()

@@ -18,7 +18,7 @@ class Move:
 		self.temp_bool = False
 		self.distance = 0
 		self.rotate = 0
-		self.current_state = None
+		self.current_state:State = State("",0,0)
 		self.aruco_subscriber = rospy.Subscriber('ArUco_transform', TransformStamped, self.arucoTransformCallback)
 		self.pub = rospy.Publisher('/stretch/cmd_vel', Twist, queue_size=10) #/stretch_diff_drive_controller/cmd_vel for gazebo
 		self.current_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.current_state_callback)
@@ -57,29 +57,30 @@ class Move:
 		command.angular.x = 0.0
 		command.angular.y = 0.0
 		command.angular.z = 0.05
+		if negative:
+			command.angular.z = -0.05
 		self.pub.publish(command)
 	
 	def decide(self):
-		if self.rotate >= 0.12:
-			self.spin(negative=False)
-		elif self.rotate <= -0.12:
-			self.spin(negative=True)
-		elif self.distance < -0.6:
-			self.move_forward()
+		#If it was a navigation signal that was received, move towards location
+		#if self.last_transform_time > time.now() + 50:
+		#	self.distance = 0
+		#	self.rotate = 0
+		if self.current_state.navigation: 
+			if self.rotate >= 0.05:
+				self.spin(negative=False)
+			elif self.rotate <= -0.05:
+				self.spin(negative=True)
+			elif self.distance < -0.5:
+				self.move_forward()
+			else:
+				if not self.current_state.completed:
+					rospy.loginfo("Published that I got there") 
+					new_state = State(self.current_state.name, 1, 1) 
+					self.current_state_publisher.publish(new_state.toMsg()) 
 		else:
-			rospy.loginfo("Close enough to target, updating state")
-			new_state = None 
-			if self.current_state != None: 
-				new_state = State(self.current_state.name, 1)
-				self.current_state_publisher.publish(new_state.toMsg())
+			rospy.loginfo("Command was not for navigation")
 
-	def moveUpCondition(self):
-		rospy.loginfo(self.temp_bool)
-		while self.distance > 0.1:
-			self.move_forward()
-			rospy.sleep()
-		    
-	
 	def stop(self):
 		"""
 		Function that stops Stretch
@@ -102,6 +103,7 @@ class Move:
 		self.rotate = msg.transform.rotation.z
 		rospy.loginfo("Comp dist %s", self.distance)
 		rospy.loginfo("Comp rot %s", self.rotate)
+		#self.last_transform_time = time.now()
 		
 	def main(self):
 		while not rospy.is_shutdown():

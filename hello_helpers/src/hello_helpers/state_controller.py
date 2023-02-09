@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import rospy
 from std_msgs.msg import String, Bool
 from hello_helpers.msg import StateMessage
@@ -7,60 +9,42 @@ from state import State
 
 class StateController():
     def __init__(self):
-        self.current_state = None
-        self.next_state = State("nav_1", 0)
-        self.rate = 10
+        rospy.init_node('state_controller')
+        self.current_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.update_state)
+        self.current_state_publisher = rospy.Publisher('actions/current_state', StateMessage, queue_size=10)
+        self.r = rospy.Rate(self.rate)
+        rospy.loginfo("Starting State Controller Node")
+
+        self.current_state = 0
+        self.states = [State("nav_1", 0, 1), State("nav_2", 0, 1), State("nav_3", 0, 1), State("table", 0, 1)]
+        self.rate = 30
 
     def update_state(self, msg):
         """
         Checks to see if sent destination was reached, gives robot new goal
         """
         receivedState = State.fromMsg(msg)
-        #Check if State is different
-        if receivedState != self.current_state:
-            #Update the recorded state and publish it
-            self.current_state = receivedState
-            rospy.loginfo("State Updated To: %s", self.current_state)
-            
-            if receivedState.check:
-                self.next_state = self.state_manager(msg.name)
-                self.next_state_publisher.publish(self.next_state.toMsg())
-                rospy.loginfo("Now Executing To: %s", self.next_state)
-
+        #Send some command to joint to look for next tag 
+        #Current State is the same as what was the last next state
+        if self.current_state.name == receivedState.name and receivedState.completed:
+            self.current_state = self.state_manager()
     
-    def state_manager(self, state_name):
+    def state_manager(self):
         """
         Pushes the next state
         """
-        if state_name == "nav_1":
-            return State("nav_2", 0)
-        elif state_name == "nav_2":
-            return State("nav_3", 0)
-        else:
-            return State("table", 0)
-        
+        return self.states.pop()
 
-    def main(self):
-
-        self.current_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.update_state)
-        self.next_state_publisher = rospy.Publisher('actions/next_state', StateMessage, queue_size=10)
-
-
-        rospy.init_node('state_controller')
-        r   = rospy.Rate(self.rate) 
-        #self.update_state(None)
+    def spin(self):
         while not rospy.is_shutdown():
-            #rospy.loginfo('Is running')
-            self.next_state_publisher.publish(self.next_state.toMsg())
-            #rospy.loginfo("Next state is %s", self.next_state)
-            r.sleep()
+            self.current_state_publisher.publish(self.current_state.toMsg())
+            self.r.sleep()
 
 if __name__ == '__main__':
-    
-
     try:
         node = StateController()
-        node.main()
+        node.spin()
 
     except KeyboardInterrupt:
+        rospy.signal_shutdown()
         print('interrupt received, so shutting down')

@@ -1,2 +1,3 @@
 string name
-int8 check 
+int8 completed 
+int8 navigation
