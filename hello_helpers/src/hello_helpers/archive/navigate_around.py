@@ -1,6 +1,6 @@
 import rospy
 from std_msgs.msg import String, Bool
-import aruco_navigation as an  
+import get_aruco_info as an  
 
 class QRNavigator(hm.HelloNode):
 

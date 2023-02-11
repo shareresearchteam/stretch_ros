@@ -26,7 +26,14 @@ class ArucoNavigationNode(hm.HelloNode):
         self.joint_state = None
         self.next_state = None
 
-        self.transform_pub = rospy.Publisher('ArUco_transform', TransformStamped, queue_size=1)
+        #Controls how many duplicates it will tolerate efore defaulting
+        self.count = 0
+
+        #Initial data for publishing
+        self.cam_to_tag_angle = -math.pi/4
+        self.base_to_tag_angle = 0
+        self.base_to_tag_distance = 0
+
         self.cam_to_tag_angle_publisher = rospy.Publisher('cam_to_tag_angle', Float32, queue_size=1)
         self.base_to_tag_angle_publisher = rospy.Publisher('base_to_tag_angle', Float32, queue_size=1)
         self.base_to_tag_distance_publisher = rospy.Publisher('base_to_tag_distance', Float32, queue_size=1)
@@ -48,27 +55,34 @@ class ArucoNavigationNode(hm.HelloNode):
             """
             # Get transforms from the tag to the camera and base
             base_to_tag:TransformStamped = self.tf_buffer.lookup_transform('base_link', tag_name, rospy.Time(0))
+            base_to_cam:TransformStamped = self.tf_buffer.lookup_transform('base_link', 'camera_link', rospy.Time(0))
+            #Brian - There was a issue where it was more diffidult to get the angle while using the camera link as the source
             cam_to_tag:TransformStamped = self.tf_buffer.lookup_transform('camera_link', tag_name, rospy.Time(0))
 
             if (self.last_transform != base_to_tag.transform):
+                self.count =0
+                rospy.loginfo("Found Tag")
                 # Get angle between the tag and the camera
-                cam_to_tag_angle = math.atan2(-cam_to_tag.transform.translation.z, cam_to_tag.transform.translation.x)
+                cam_hypotonuse = (cam_to_tag.transform.translation.x ** 2 + cam_to_tag.transform.translation.y ** 2) ** 0.5
+                self.cam_to_tag_angle = -math.acos(base_to_tag.transform.translation.x/cam_hypotonuse)
                 # Get angle between the tag and the base
-                base_to_tag_angle = math.atan2(base_to_tag.transform.translation.y, base_to_tag.transform.translation.x)
+                self.base_to_tag_angle = math.atan2(base_to_tag.transform.translation.y, base_to_tag.transform.translation.x)
                 # Get distance between the tag and the base
-                base_to_tag_distance = (base_to_tag.transform.translation.x ** 2 + base_to_tag.transform.translation.y ** 2) ** 0.5
+                self.base_to_tag_distance = (base_to_tag.transform.translation.x ** 2 + base_to_tag.transform.translation.y ** 2) ** 0.5
                 
                 self.last_transform = base_to_tag.transform
             else:
-                # The tf is old; ignore it
-                cam_to_tag_angle = 0
-                base_to_tag_angle = 0
-                base_to_tag_distance = 0
+                self.count +=1
+                if self.count >= 7:
+                    # The tf is old; ignore it
+                    self.cam_to_tag_angle = -math.pi/4
+                    self.base_to_tag_angle = 0
+                    self.base_to_tag_distance = 0
 
             # Publish all data
-            self.cam_to_tag_angle_publisher.publish(cam_to_tag_angle)
-            self.base_to_tag_angle_publisher.publish(base_to_tag_angle)
-            self.base_to_tag_distance_publisher.publish(base_to_tag_distance)
+            self.cam_to_tag_angle_publisher.publish(self.cam_to_tag_angle)
+            self.base_to_tag_angle_publisher.publish(self.base_to_tag_angle)
+            self.base_to_tag_distance_publisher.publish(self.base_to_tag_distance)
 
     def find_tag(self):
         '''  
@@ -77,16 +91,17 @@ class ArucoNavigationNode(hm.HelloNode):
         #Check if tag is in view
         try:
             # tag_name = self.next_state.name
-            self.handleTransforms("nav_1")
+            self.handleTransforms("table")
         #Tag not found
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            self.transform_pub.publish(TransformStamped())
-            self.cam_to_tag_angle_publisher.publish(-math.pi/4)
+            
             rospy.loginfo("Problem finding tag")
+            #Do a search to find the tag
+            
             pass
-        except AttributeError:
-            rospy.loginfo("State not detected")
-            pass
+        #except AttributeError:
+        #    rospy.loginfo("State not detected")
+        #    pass
 
         return None 
 

@@ -25,13 +25,12 @@ class JointControl(hm.HelloNode):
         self.joint_state = None
         self.last_camera_angle = -math.pi/4
         rospy.loginfo('{0}: Made contact with trajectory server'.format(self.__class__.__name__))
-        self.camera_angle_subscriber = rospy.Subscriber('Camera_Angle', Float32, self.camera_following_callback)
-        self.base_transform_subsriber = rospy.Subscriber('ArUco_transform', TransformStamped, self.aruco_callback)
+        self.camera_angle_subscriber = rospy.Subscriber('cam_to_tag_angle', Float32, self.camera_following_callback)
 
 
     def camera_following_callback(self, msg):
         rospy.loginfo("Received message: %s", msg)
-        angle = -1*msg.data
+        angle = 1*msg.data
         if abs(angle-self.last_camera_angle) > 0.1:
             rospy.loginfo('Current angle %s', self.last_camera_angle)
             rospy.loginfo('Changing camera angle from to %s radians', angle)

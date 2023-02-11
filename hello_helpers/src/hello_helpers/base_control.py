@@ -17,16 +17,23 @@ class Move:
 		"""
 		self.temp_bool = False
 		self.distance = 0
-		self.rotate = 0
-		self.current_state:State = State("",0,0)
-		self.aruco_subscriber = rospy.Subscriber('ArUco_transform', TransformStamped, self.arucoTransformCallback)
+		self.angle = 0
+		self.current_state:State = State("",0,1)
 		self.pub = rospy.Publisher('/stretch/cmd_vel', Twist, queue_size=10) #/stretch_diff_drive_controller/cmd_vel for gazebo
 		self.current_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.current_state_callback)
 		self.current_state_publisher = rospy.Publisher('actions/current_state', StateMessage, queue_size=10)
+
+		self.base_to_tag_angle_subscriber = rospy.Subscriber('base_to_tag_angle', Float32, self.base_to_tag_angle_callback)
+		self.base_to_tag_distance_subscriber = rospy.Subscriber('base_to_tag_distance', Float32, self.base_to_tag_distance_callback)
+
+	def base_to_tag_distance_callback(self,msg):
+		self.distance = msg.data
 	
+	def base_to_tag_angle_callback(self, msg):
+		self.angle = msg.data
+
 	def current_state_callback(self, msg):
 		self.current_state = State.fromMsg(msg) 
-
 
 	def move_forward(self):
 		"""
@@ -57,11 +64,7 @@ class Move:
 		command.angular.x = 0.0
 		command.angular.y = 0.0
 		command.angular.z = 0.05
-<<<<<<< HEAD:hello_helpers/src/hello_helpers/base_control.py
 		if negative:
-=======
-		if negative: 
->>>>>>> 387b7d2618c131d4cd23651df6e4970ebd64b634:hello_helpers/src/hello_helpers/movement.py
 			command.angular.z = -0.05
 		self.pub.publish(command)
 	
@@ -71,11 +74,11 @@ class Move:
 		#	self.distance = 0
 		#	self.rotate = 0
 		if self.current_state.navigation: 
-			if self.rotate >= 0.05:
+			if self.angle >= 0.12:
 				self.spin(negative=False)
-			elif self.rotate <= -0.05:
+			elif self.angle <= -0.12:
 				self.spin(negative=True)
-			elif self.distance < -0.5:
+			elif self.distance > 0.1:
 				self.move_forward()
 			else:
 				if not self.current_state.completed:
@@ -98,17 +101,6 @@ class Move:
 		command.angular.z = 0.0
 		self.pub.publish(command)
 	
-	def arucoTransformCallback(self, msg:TransformStamped):
-		"""
-		Function that retrieves information about
-		target aruco tag location. 
-		"""
-		self.distance = msg.transform.translation.x
-		self.rotate = msg.transform.rotation.z
-		rospy.loginfo("Comp dist %s", self.distance)
-		rospy.loginfo("Comp rot %s", self.rotate)
-		#self.last_transform_time = time.now()
-		
 	def main(self):
 		while not rospy.is_shutdown():
 			#self.spin(True)
