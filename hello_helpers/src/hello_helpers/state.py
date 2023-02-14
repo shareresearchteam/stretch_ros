@@ -18,10 +18,6 @@ class State():
             rospy.loginfo("No message received")
             return None
 
-    def updateComplete(self):
-        self.completed = 1
-
-
     def __eq__(self, __o: object) -> bool:
         return self.name ==__o.name and self.completed == __o.check
     

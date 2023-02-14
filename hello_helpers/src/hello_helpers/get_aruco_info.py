@@ -24,7 +24,7 @@ class ArucoNavigationNode(hm.HelloNode):
         self.translation = None
         self.rotation = None
         self.joint_state = None
-        self.next_state = None
+        self.current_state = None
 
         #Controls how many duplicates it will tolerate efore defaulting
         self.count = 0
@@ -37,16 +37,15 @@ class ArucoNavigationNode(hm.HelloNode):
         self.cam_to_tag_angle_publisher = rospy.Publisher('cam_to_tag_angle', Float32, queue_size=1)
         self.base_to_tag_angle_publisher = rospy.Publisher('base_to_tag_angle', Float32, queue_size=1)
         self.base_to_tag_distance_publisher = rospy.Publisher('base_to_tag_distance', Float32, queue_size=1)
-        self.next_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.next_state_callback)
+        self.current_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.current_state_callback)
 
         self.last_transform = Transform()
 
-    def next_state_callback(self, msg:StateMessage):
+    def current_state_callback(self, msg:StateMessage):
         """"
         Callback for the next_state topic to store current state information
         """
-        #rospy.loginfo("Updating Next State")
-        self.next_state = State.fromMsg(msg)
+        self.current_state = State.fromMsg(msg)
 
     def handleTransforms(self, tag_name):
             """
@@ -55,7 +54,7 @@ class ArucoNavigationNode(hm.HelloNode):
             """
             # Get transforms from the tag to the camera and base
             base_to_tag:TransformStamped = self.tf_buffer.lookup_transform('base_link', tag_name, rospy.Time(0))
-            base_to_cam:TransformStamped = self.tf_buffer.lookup_transform('base_link', 'camera_link', rospy.Time(0))
+            
             #Brian - There was a issue where it was more diffidult to get the angle while using the camera link as the source
             cam_to_tag:TransformStamped = self.tf_buffer.lookup_transform('camera_link', tag_name, rospy.Time(0))
 
@@ -73,7 +72,7 @@ class ArucoNavigationNode(hm.HelloNode):
                 self.last_transform = base_to_tag.transform
             else:
                 self.count +=1
-                if self.count >= 7:
+                if self.count >= 20:
                     # The tf is old; ignore it
                     self.cam_to_tag_angle = -math.pi/4
                     self.base_to_tag_angle = 0
@@ -90,8 +89,8 @@ class ArucoNavigationNode(hm.HelloNode):
         '''     
         #Check if tag is in view
         try:
-            # tag_name = self.next_state.name
-            self.handleTransforms("table")
+            tag_name = self.current_state.name
+            self.handleTransforms(tag_name)
         #Tag not found
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             

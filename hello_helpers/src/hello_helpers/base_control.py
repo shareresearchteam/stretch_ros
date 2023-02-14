@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from std_msgs.msg import Float32 
+from std_msgs.msg import Float32, Int8
 from geometry_msgs.msg import Twist, TransformStamped
 from hello_helpers.msg import StateMessage
 from state import State
@@ -22,6 +22,7 @@ class Move:
 		self.pub = rospy.Publisher('/stretch/cmd_vel', Twist, queue_size=10) #/stretch_diff_drive_controller/cmd_vel for gazebo
 		self.current_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.current_state_callback)
 		self.current_state_publisher = rospy.Publisher('actions/current_state', StateMessage, queue_size=10)
+		self.flag_publisher = rospy.Publisher('actions/flag', Int8, queue_size=10)
 
 		self.base_to_tag_angle_subscriber = rospy.Subscriber('base_to_tag_angle', Float32, self.base_to_tag_angle_callback)
 		self.base_to_tag_distance_subscriber = rospy.Subscriber('base_to_tag_distance', Float32, self.base_to_tag_distance_callback)
@@ -80,11 +81,6 @@ class Move:
 				self.spin(negative=True)
 			elif self.distance > 0.1:
 				self.move_forward()
-			else:
-				if not self.current_state.completed:
-					rospy.loginfo("Published that I got there") 
-					new_state = State(self.current_state.name, 1, 1) 
-					self.current_state_publisher.publish(new_state.toMsg()) 
 		else:
 			rospy.loginfo("Command was not for navigation")
 
@@ -103,8 +99,13 @@ class Move:
 	
 	def main(self):
 		while not rospy.is_shutdown():
-			#self.spin(True)
 			self.decide()
+			if self.distance < 0.1:
+				self.flag_publisher.publish(1)
+			else:
+				self.flag_publisher.publish(0)
+			
+
 
 if __name__ == '__main__':
 	try:
