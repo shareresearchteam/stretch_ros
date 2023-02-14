@@ -135,11 +135,11 @@ class JointControl(hm.HelloNode):
         min_pan = -4
         max_pan = 1.3
         delta = (max_pan - min_pan) / 5
-        last_angle = 0
-        last_pan = 0
-        while not rospy.is_shutdown():
 
-            if math.isclose(self.last_camera_angle,last_angle) and math.isclose(self.last_pan_camera_angle, last_pan) and self.joint_state is not None:
+        while not rospy.is_shutdown():
+            last_angle = self.last_camera_angle
+            last_pan = self.last_pan_camera_angle
+            if math.isclose(self.last_camera_angle,-math.pi/4) and math.isclose(self.last_pan_camera_angle,0) and self.joint_state is not None:
                 joint_index = self.joint_state.name.index('joint_head_pan')
                 joint_value = self.joint_state.position[joint_index]
                 rospy.loginfo("Delta %s", delta)
@@ -148,8 +148,6 @@ class JointControl(hm.HelloNode):
                 command = {'joint': 'joint_head_pan', 'delta': delta}
                 self.send_command(command)
                 rospy.sleep(0.1)
-            last_angle = self.last_camera_angle
-            last_pan = self.last_pan_camera_angle
 
 if __name__ == '__main__':
     

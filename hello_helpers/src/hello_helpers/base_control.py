@@ -99,7 +99,7 @@ class Move:
 	
 	def main(self):
 		while not rospy.is_shutdown():
-			self.decide()
+			self.decide() 
 			if self.distance < 0.1:
 				self.flag_publisher.publish(1)
 			else:
