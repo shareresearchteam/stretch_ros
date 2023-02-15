@@ -10,7 +10,7 @@ from std_srvs.srv import Trigger
 from geometry_msgs.msg import TransformStamped, Transform
 from sensor_msgs.msg import JointState
 import math 
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Int8
 import numpy as np 
 from hello_helpers.msg import StateMessage
 from state import State 
@@ -38,6 +38,7 @@ class ArucoNavigationNode(hm.HelloNode):
         self.base_to_tag_angle_publisher = rospy.Publisher('base_to_tag_angle', Float32, queue_size=1)
         self.base_to_tag_distance_publisher = rospy.Publisher('base_to_tag_distance', Float32, queue_size=1)
         self.current_state_subscriber = rospy.Subscriber('actions/current_state', StateMessage, self.current_state_callback)
+        self.search_flag_publisher = rospy.Publisher('actions/search_flag', Int8, queue_size=10)
 
         self.last_transform = Transform()
 
@@ -77,11 +78,14 @@ class ArucoNavigationNode(hm.HelloNode):
                     self.cam_to_tag_angle = -math.pi/4
                     self.base_to_tag_angle = 0
                     self.base_to_tag_distance = 0
+            
+                    
 
             # Publish all data
             self.cam_to_tag_angle_publisher.publish(self.cam_to_tag_angle)
             self.base_to_tag_angle_publisher.publish(self.base_to_tag_angle)
             self.base_to_tag_distance_publisher.publish(self.base_to_tag_distance)
+            self.search_flag_publisher.publish(0)
 
     def find_tag(self):
         '''  
@@ -95,8 +99,7 @@ class ArucoNavigationNode(hm.HelloNode):
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             
             rospy.loginfo("Problem finding tag")
-            #Do a search to find the tag
-            
+            self.search_flag_publisher.publish(1)
             pass
         #except AttributeError:
         #    rospy.loginfo("State not detected")
@@ -109,7 +112,7 @@ class ArucoNavigationNode(hm.HelloNode):
 
         self.r = rospy.Rate(rospy.get_param('~rate', 10.0))
 
-        rospy.Subscriber('/stretch/joint_states', JointState, self.joint_states_callback)
+        
 
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.tf_buffer = tf2_ros.Buffer()

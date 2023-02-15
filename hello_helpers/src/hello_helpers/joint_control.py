@@ -10,7 +10,7 @@ from sensor_msgs.msg import JointState
 # robot trajectories
 from trajectory_msgs.msg import JointTrajectoryPoint
 import math 
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Int8
 from state import State
 
 class JointControl(hm.HelloNode):
@@ -26,13 +26,20 @@ class JointControl(hm.HelloNode):
         self.joint_state = None
         self.last_camera_angle = -math.pi/4
         self.last_pan_camera_angle = 0
+        self.search_flag = 0 
+
         rospy.loginfo('{0}: Made contact with trajectory server'.format(self.__class__.__name__))
         self.camera_angle_subscriber = rospy.Subscriber('cam_to_tag_angle', Float32, self.camera_following_callback)
         self.base_to_tag_angle_subscriber = rospy.Subscriber('base_to_tag_angle', Float32, self.pan_follower_callback)
+        self.search_flag_subscriber = rospy.Subscriber('actions/search_flag', Int8, self.search_flag_callback)
+    
+    def search_flag_callback(self, msg):
+        self.search_flag = msg.data
+
 
     def pan_follower_callback(self, msg):
         angle = 1*msg.data
-        if abs(angle-self.last_camera_angle) > 0.2:
+        if abs(angle-self.last_camera_angle) > 0.5:
             rospy.loginfo("Pan to %s radians", angle)
             new_pose = {'joint_head_pan': angle}
             self.move_to_pose(new_pose)
@@ -137,9 +144,7 @@ class JointControl(hm.HelloNode):
         delta = (max_pan - min_pan) / 5
 
         while not rospy.is_shutdown():
-            last_angle = self.last_camera_angle
-            last_pan = self.last_pan_camera_angle
-            if math.isclose(self.last_camera_angle,-math.pi/4) and math.isclose(self.last_pan_camera_angle,0) and self.joint_state is not None:
+            if self.search_flag:
                 joint_index = self.joint_state.name.index('joint_head_pan')
                 joint_value = self.joint_state.position[joint_index]
                 rospy.loginfo("Delta %s", delta)
@@ -147,7 +152,7 @@ class JointControl(hm.HelloNode):
                     delta = -delta
                 command = {'joint': 'joint_head_pan', 'delta': delta}
                 self.send_command(command)
-                rospy.sleep(0.1)
+            rospy.Rate(10).sleep()
 
 if __name__ == '__main__':
     

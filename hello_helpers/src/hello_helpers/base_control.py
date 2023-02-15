@@ -76,11 +76,16 @@ class Move:
 		#	self.rotate = 0
 		if self.current_state.navigation: 
 			if self.angle >= 0.12:
+				self.flag_publisher.publish(0)
 				self.spin(negative=False)
 			elif self.angle <= -0.12:
+				self.flag_publisher.publish(0)
 				self.spin(negative=True)
 			elif self.distance > 0.1:
+				self.flag_publisher.publish(0)
 				self.move_forward()
+			else:
+				self.flag_publisher.publish(1)
 		else:
 			rospy.loginfo("Command was not for navigation")
 
@@ -100,10 +105,6 @@ class Move:
 	def main(self):
 		while not rospy.is_shutdown():
 			self.decide() 
-			if self.distance < 0.1:
-				self.flag_publisher.publish(1)
-			else:
-				self.flag_publisher.publish(0)
 			
 
 

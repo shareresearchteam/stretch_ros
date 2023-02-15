@@ -21,7 +21,6 @@ class StateController():
         self.current_state = State("nav_1", 0, 1)
         self.current_state_index = 0
         self.states = [State("nav_1", 0, 1), State("nav_2", 0, 1), State("nav_3", 0, 1), State("table", 0, 1)]
-        #self.rate = 30
     
     def flag_callbak(self, msg):
         """
