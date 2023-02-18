@@ -4,6 +4,7 @@
 import rospy
 from control_msgs.msg import FollowJointTrajectoryGoal
 
+
 # Import JointTrajectoryPoint from the trajectory_msgs package to define
 # robot trajectories
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -35,6 +36,15 @@ class MultiPointCommand(hm.HelloNode):
 
 		#pose = {'gripper_aperture': 0.125}
 		#self.move_to_pose(pose)
+
+	
+	def new_list(self, shape):
+		converted_shape = []
+		for point in shape:
+			trajectory = JointTrajectoryPoint()
+			trajectory.positions = [point[0], point[1],point[2], point[3], point[4]]
+			converted_shape.append(trajectory)
+		self.path = converted_shape
 
 	def issue_multipoint_command(self):
 		"""
@@ -76,13 +86,34 @@ class MultiPointCommand(hm.HelloNode):
 		rospy.sleep(2)
 
 if __name__ == '__main__':
-    pi = 3.14
-    length = 0.06
-    try:
+	pi = 3.14
+	length = 0.06
+	try:
         # Instanstiate a `MultiPointCommand()` object and execute the main() method
-        pointlist = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],[0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],[length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
-        
-        node = MultiPointCommand(shape=pointlist)
-        node.main()
-    except KeyboardInterrupt:
-        rospy.loginfo('interrupt received, so shutting down')
+		pointlist = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],[0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],[length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
+		node = MultiPointCommand(shape=pointlist)
+		node.main()	
+
+		length = 0.08
+		pointlist = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],[0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],[length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
+		node.new_list(pointlist)
+		node.issue_multipoint_command()
+		rospy.sleep(2)
+		length = 0.04
+		pointlist = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],[0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],[length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
+		node.new_list(pointlist)
+		node.issue_multipoint_command()
+		rospy.sleep(2)
+		length = 0.1
+		pointlist = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],[0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],[length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
+		node.new_list(pointlist)
+		node.issue_multipoint_command()
+		rospy.sleep(2)
+		length = 0.02
+		pointlist = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],[0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],[length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
+		node.new_list(pointlist)
+		node.issue_multipoint_command()
+		rospy.sleep(2)
+
+	except KeyboardInterrupt:
+		rospy.loginfo('interrupt received, so shutting down')
