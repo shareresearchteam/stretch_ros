@@ -60,7 +60,7 @@ class ReplicationController(hm.HelloNode):
         Pushes the next state
         """
         self.current_state_index +=1
-        return self.states[self.current_state_index]
+        self.current_state = self.states[self.current_state_index]
     
     def moveBase(self):
         if "nav" in self.current_state and not self.search_flag:
@@ -70,7 +70,19 @@ class ReplicationController(hm.HelloNode):
                 self.base_commands.spin(negative=True)
             elif self.base_to_tag_distance > 0.1:
                 self.base_commands.move_forward()
-				
+            else:
+                #Increment State 
+                self.state_manager()
+
+    def tableCommand(self):
+        if self.current_state == "table":
+            length = 0.1
+            shape  = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],
+                             [0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],
+                             [length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
+            self.issue_multipoint_command(shape)
+            self.state_manager()
+
 
     def handleTransforms(self, tag_name):
             """
@@ -116,7 +128,8 @@ class ReplicationController(hm.HelloNode):
         #Tag not found
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             rospy.loginfo("Problem finding tag")
-            self.search_flag = True
+            if "nav" in self.current_state:
+                self.search_flag = True
             pass
 
         return None 
@@ -141,7 +154,6 @@ class ReplicationController(hm.HelloNode):
 
 
     def update_camera_angle(self):
-        print(self.search_flag)
         if not self.search_flag:
             self.tilt_follower()
             self.pan_follower()
@@ -149,7 +161,6 @@ class ReplicationController(hm.HelloNode):
             self.camera_search()
 
     def camera_search(self):
-
         joint_index = self.joint_state.name.index('joint_head_pan')
         joint_value = self.joint_state.position[joint_index]
         if not -4 < (self.delta + joint_value) < 1.3:
@@ -157,7 +168,7 @@ class ReplicationController(hm.HelloNode):
         command = {'joint': 'joint_head_pan', 'delta': self.delta}
         self.send_command(command)
 
-
+#Joiint control 
     def send_command(self, command):
         """
         Handles single joint control commands by constructing a FollowJointTrajectoryMessage and sending it to
@@ -196,12 +207,46 @@ class ReplicationController(hm.HelloNode):
             self.trajectory_client.send_goal(trajectory_goal)
             self.trajectory_client.wait_for_result()
 
+    def createPath(self, shape):
+        converted_shape = []
+        for point in shape:
+            trajectory = JointTrajectoryPoint()
+            trajectory.positions = [point[0], point[1],point[2], point[3], point[4]]
+            converted_shape.append(trajectory)
+        return converted_shape
+
+    def issue_multipoint_command(self, shape):
+        """
+        Function that makes an action call and sends multiple joint trajectory goals
+        to the joint_lift, wrist_extension, and joint_wrist_yaw.
+        :param self: The self reference.
+        """
+
+        # Set trajectory_goal as a FollowJointTrajectoryGoal and define
+        # the joint names as a list
+
+        trajectory_goal = FollowJointTrajectoryGoal()
+        trajectory_goal.trajectory.joint_names = ['wrist_extension','joint_lift', 'joint_wrist_yaw','joint_wrist_pitch']
+
+        # Then trajectory_goal.trajectory.points is defined by a list of the joint
+        # trajectory points
+        trajectory_goal.trajectory.points = self.createPath(shape)
+
+        # Specify the coordinate frame that we want (base_link) and set the time to be now
+        trajectory_goal.trajectory.header.stamp = rospy.Time(0.0)
+        trajectory_goal.trajectory.header.frame_id = 'base_link'
+
+        # Make the action call and send the goal. The last line of code waits
+        # for the result before it exits the python script
+        self.trajectory_client.send_goal(trajectory_goal)
+        rospy.loginfo('Sent list of goals = {0}'.format(trajectory_goal))
+        self.trajectory_client.wait_for_result()
+
+
     def main(self):
         hm.HelloNode.main(self, 'save_pose', 'save_pose', wait_for_first_pointcloud=False)
         rospy.Subscriber('/stretch/joint_states', JointState, self.joint_states_callback)
         self.r = rospy.Rate(rospy.get_param('~rate', 10.0))
-
-        
 
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.tf_buffer = tf2_ros.Buffer()
@@ -218,6 +263,7 @@ class ReplicationController(hm.HelloNode):
             self.find_tag()
             self.update_camera_angle()
             self.moveBase()
+            self.tableCommand()
             rate.sleep()
          
 if __name__ == '__main__':

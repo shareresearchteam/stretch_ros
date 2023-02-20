@@ -29,24 +29,20 @@ class MultiPointCommand(hm.HelloNode):
 		converted_shape = []
 		for point in shape:
 			trajectory = JointTrajectoryPoint()
-			print(point[3	])
 			trajectory.positions = [point[0], point[1],point[2], point[3], point[4]]
 			converted_shape.append(trajectory)
 		self.path = converted_shape
 
-		#pose = {'gripper_aperture': 0.125}
-		#self.move_to_pose(pose)
-
 	
-	def new_list(self, shape):
+	def createPath(self, shape):
 		converted_shape = []
 		for point in shape:
 			trajectory = JointTrajectoryPoint()
 			trajectory.positions = [point[0], point[1],point[2], point[3], point[4]]
 			converted_shape.append(trajectory)
-		self.path = converted_shape
+		return converted_shape
 
-	def issue_multipoint_command(self):
+	def issue_multipoint_command(self, shape):
 		"""
 		Function that makes an action call and sends multiple joint trajectory goals
 		to the joint_lift, wrist_extension, and joint_wrist_yaw.
@@ -57,11 +53,11 @@ class MultiPointCommand(hm.HelloNode):
 		# the joint names as a list
 
 		trajectory_goal = FollowJointTrajectoryGoal()
-		trajectory_goal.trajectory.joint_names = ['wrist_extension','joint_lift', 'joint_wrist_yaw','joint_head_tilt','joint_head_pan']
+		trajectory_goal.trajectory.joint_names = ['wrist_extension','joint_lift', 'joint_wrist_yaw','joint_wrist_pitch']
 
 		# Then trajectory_goal.trajectory.points is defined by a list of the joint
 		# trajectory points
-		trajectory_goal.trajectory.points = self.path
+		trajectory_goal.trajectory.points = self.createPath()
 
 		# Specify the coordinate frame that we want (base_link) and set the time to be now
 		trajectory_goal.trajectory.header.stamp = rospy.Time(0.0)
