@@ -2,7 +2,8 @@
 
   <arg name="rviz"     default="true" doc="whether to show Rviz" /> 
   <param name="file_path" value="$(find stretch_core)/config" />
-  
+  <arg name="map_yaml"        default="''"                             doc="previously captured FUNMAP map (optional)" />
+  <arg name="debug_directory" default="$(env HELLO_FLEET_PATH)/debug/" doc="directory where debug imagery is saved" />
   <!-- STRETCH DRIVER -->
   <param name="/stretch_driver/broadcast_odom_tf" type="bool" value="true"/>
   <param name="/stretch_driver/mode" type="string" value="navigation" />
@@ -24,7 +25,13 @@
   <!-- ARUCO MARKER DETECTOR -->
   <rosparam command="load" file="$(find stretch_core)/config/stretch_marker_dict.yaml" />
   <node name="detect_aruco_markers" pkg="stretch_core" type="detect_aruco_markers" output="screen"/>
-
+  
+  <!-- FUNMAP -->
+  <node name="funmap" pkg="stretch_funmap" type="funmap" output="screen"  args="--load_map $(arg map_yaml)">
+    <param name="debug_directory" type="string" value="$(arg debug_directory)"/>
+  </node>
+  <!-- -->
+  
   <!-- MAPPING -->
   <node pkg="gmapping" type="slam_gmapping" name="gmapping" output="log" />
 

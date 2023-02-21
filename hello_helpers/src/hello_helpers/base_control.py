@@ -45,7 +45,7 @@ class Move:
 		"""
 		rospy.loginfo("Sending move command")
 		command = Twist()
-		command.linear.x = 0.3
+		command.linear.x = 0.1
 		command.linear.y = 0.0
 		command.linear.z = 0.0
 		command.angular.x = 0.0
@@ -64,7 +64,7 @@ class Move:
 		command.linear.z = 0.0
 		command.angular.x = 0.0
 		command.angular.y = 0.0
-		command.angular.z = 0.05
+		command.angular.z = 0.15
 		if negative:
 			command.angular.z = -0.05
 		self.pub.publish(command)

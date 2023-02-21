@@ -5,8 +5,7 @@ import rospy
 import tf2_ros
 from math import pi, sqrt, atan2
 
-from std_srvs.srv import Trigger
-
+from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
 from geometry_msgs.msg import TransformStamped, Transform
 from sensor_msgs.msg import JointState
 import math 
@@ -17,6 +16,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 from control_msgs.msg import FollowJointTrajectoryGoal
 from state import State 
 from base_control import Move
+import stretch_funmap.navigate as nv
 
 class ReplicationController(hm.HelloNode):
     def __init__(self):
@@ -24,7 +24,7 @@ class ReplicationController(hm.HelloNode):
         super().__init__()
         
         self.joint_state = None
-
+        self.move_base = nv.MoveBase(self)
         #Controls how many duplicates it will tolerate before defaulting
         self.count = 0
 
@@ -40,9 +40,9 @@ class ReplicationController(hm.HelloNode):
         self.delta = (max_pan - min_pan) / 10
         self.search_flag = False
         #For state control
-        self.current_state = "nav_1"
+        self.current_state = "table"
         self.current_state_index = 0
-        self.states = ["nav_1","nav_2","nav_3","nav_4","nav_5"]
+        self.states = ["nav_1","nav_2","table","nav_4","nav_5"]
         
         self.last_transform = Transform()
     
@@ -74,8 +74,17 @@ class ReplicationController(hm.HelloNode):
                 #Increment State 
                 self.state_manager()
 
+    #Droping off functions 
+
+    def align_to_surface(self):
+        rospy.loginfo('align_to_surface')
+        trigger_request = TriggerRequest() 
+        trigger_result = self.trigger_align_with_nearest_cliff_service(trigger_request)
+        rospy.loginfo('trigger_result = {0}'.format(trigger_result))
+
     def tableCommand(self):
         if self.current_state == "table":
+            self.align_to_surface()
             length = 0.1
             shape  = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],
                              [0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],
@@ -247,6 +256,11 @@ class ReplicationController(hm.HelloNode):
         hm.HelloNode.main(self, 'save_pose', 'save_pose', wait_for_first_pointcloud=False)
         rospy.Subscriber('/stretch/joint_states', JointState, self.joint_states_callback)
         self.r = rospy.Rate(rospy.get_param('~rate', 10.0))
+
+        rospy.wait_for_service('/funmap/trigger_align_with_nearest_cliff')
+        rospy.loginfo('Node ' + self.node_name + ' connected to /funmap/trigger_align_with_nearest_cliff.')
+        self.trigger_align_with_nearest_cliff_service = rospy.ServiceProxy('/funmap/trigger_align_with_nearest_cliff', Trigger)
+
 
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
         self.tf_buffer = tf2_ros.Buffer()
