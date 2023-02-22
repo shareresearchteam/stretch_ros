@@ -1,0 +1,167 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="stretch_dex_wrist">
+
+  <xacro:property name="scale_finger_length" value="0.9" />
+
+  <link
+    name="link_wrist_yaw_bottom">
+    <inertial>
+      <origin
+        xyz="-0.012839101377342 -0.0382787718640742 -0.0228400332263617"
+        rpy="0 0 0" />
+      <mass
+        value="0.0988906816399982" />
+      <inertia
+        ixx="2.60067866573596E-05"
+        ixy="-6.73176267521354E-06"
+        ixz="-2.43476436723672E-06"
+        iyy="5.99482946819923E-06"
+        iyz="-3.39642410492401E-06"
+        izz="2.56907114334732E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://stretch_description/meshes/link_wrist_yaw_bottom.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://stretch_description/meshes/link_wrist_yaw_bottom.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint_wrist_yaw_bottom"
+    type="fixed">
+    <origin
+      xyz="0 0 0"
+      rpy="-3.14159265358979 1.13367999021379E-14 1.57079632679489" />
+    <parent
+      link="link_wrist_yaw" />
+    <child
+      link="link_wrist_yaw_bottom" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="link_wrist_pitch">
+    <inertial>
+      <origin
+        xyz="-0.00310609611067142 -0.0150777141465843 0.0204734587925901"
+        rpy="0 0 0" />
+      <mass
+        value="0.0701267146295583" />
+      <inertia
+        ixx="2.55965614980905E-06"
+        ixy="-1.47551515167608E-06"
+        ixz="-6.31436085977252E-08"
+        iyy="3.43968637386282E-06"
+        iyz="-4.17813567208843E-07"
+        izz="4.53568668211393E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://stretch_description/meshes/link_wrist_pitch.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://stretch_description/meshes/link_wrist_pitch.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint_wrist_pitch"
+    type="revolute">
+    <origin
+      xyz="0 -0.0195500000000002 -0.0247499999999984"
+      rpy="1.5707963267949 -8.12895570882604E-15 -3.14159265358979" />
+    <parent
+      link="link_wrist_yaw_bottom" />
+    <child
+      link="link_wrist_pitch" />
+    <axis
+      xyz="0 0 -1" />
+    <limit effort="100" lower="-1.57" upper="0.56" velocity="1.0"/>
+  </joint>
+  <link
+    name="link_wrist_roll">
+    <inertial>
+      <origin
+        xyz="9.63118473862323E-15 -6.38378239159465E-15 0.00768048802649798"
+        rpy="0 0 0" />
+      <mass
+        value="0.00585666394358811" />
+      <inertia
+        ixx="2.55965614980905E-06"
+        ixy="-1.47551515167608E-06"
+        ixz="-6.31436085977252E-08"
+        iyy="3.43968637386282E-06"
+        iyz="-4.17813567208843E-07"
+        izz="4.53568668211393E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://stretch_description/meshes/link_wrist_roll.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://stretch_description/meshes/link_wrist_roll.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="joint_wrist_roll"
+    type="revolute">
+    <origin
+      xyz="-0.0188587444076125 -0.0239999999998942 0.01955"
+      rpy="3.14159265358979 1.5707963267949 0" />
+    <parent
+      link="link_wrist_pitch" />
+    <child
+      link="link_wrist_roll" />
+    <axis
+      xyz="0 0 1" />
+    <limit effort="100" lower="-3.14" upper="3.14" velocity="1.0"/>
+  </joint>
+</robot>

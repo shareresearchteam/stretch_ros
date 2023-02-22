@@ -38,11 +38,11 @@ class ReplicationController(hm.HelloNode):
         min_pan = -4
         max_pan = 1.3
         self.delta = (max_pan - min_pan) / 10
-        self.search_flag = False
+        self.search_flag = True
         #For state control
         self.current_state = "nav_1"
         self.current_state_index = 0
-        self.states = ["nav_1","nav_2","table","nav_4","nav_5"]
+        self.states = ["nav_1","nav_2","table","nav_3","nav_5"]
         
         self.last_transform = Transform()
     
@@ -62,21 +62,19 @@ class ReplicationController(hm.HelloNode):
         self.current_state_index +=1
         self.current_state = self.states[self.current_state_index]
     
-    def moveBase(self):
-        if "nav" in self.current_state and not self.search_flag:
-            if self.base_to_tag_angle >= 0.12:
-                self.base_commands.spin(negative=False)
-            elif self.base_to_tag_angle <= -0.12:
-                self.base_commands.spin(negative=True)
-            elif self.base_to_tag_distance > 0.1:
-                self.base_commands.move_forward()
-            else:
-                #Increment State 
-                self.state_manager()
-                print(self.current_state)
+    def moveBase(self):      
+        if self.base_to_tag_angle >= 0.12:
+            self.base_commands.spin(negative=False)
+        elif self.base_to_tag_angle <= -0.12:
+            self.base_commands.spin(negative=True)
+        elif self.base_to_tag_distance > 0.3:
+            self.base_commands.move_forward()
+        if self.base_to_tag_distance <= 0.4:
+            self.state_manager()
 
-    #Droping off functions 
 
+
+    #Droping off functions
     def align_to_surface(self):
         rospy.loginfo('align_to_surface')
         trigger_request = TriggerRequest() 
@@ -115,6 +113,7 @@ class ReplicationController(hm.HelloNode):
             if (self.last_transform != base_to_tag.transform):
                 self.count =0
                 rospy.loginfo("Found Tag")
+                self.search_flag = False
                 # Get angle between the tag and the camera
                 cam_hypotonuse = (cam_to_tag.transform.translation.x ** 2 + cam_to_tag.transform.translation.y ** 2) ** 0.5
                 self.cam_to_tag_angle = -math.acos(base_to_tag.transform.translation.x/cam_hypotonuse)
@@ -125,13 +124,9 @@ class ReplicationController(hm.HelloNode):
                 
                 self.last_transform = base_to_tag.transform
             else:
-                self.count +=1
-                if self.count >= 20:
-                    rospy.loginfo("Repeat")
-                    #self.cam_to_tag_angle = -math.pi/4
-                    #self.base_to_tag_angle = 0
-                    self.base_to_tag_distance = 0
-                    self.search_flag = True
+                self.count+=1
+                if self.count > 10:
+                    raise tf2_ros.LookupException
             
     def find_tag(self):
         '''  
@@ -149,24 +144,18 @@ class ReplicationController(hm.HelloNode):
                 self.search_flag = True
             pass
 
-        return None 
-
 #Camera Functions
     def pan_follower(self):
         angle = self.base_to_tag_angle
-        rospy.loginfo(abs(angle-self.last_pan_camera_angle))
-        if abs(angle-self.last_camera_angle) > 0.3:
-            rospy.loginfo("Pan to %s radians", angle)
-            new_pose = {'joint_head_pan': angle}
-            self.move_to_pose(new_pose)
+        rospy.loginfo("Pan to %s radians", angle)
+        new_pose = {'joint_head_pan': angle}
+        self.move_to_pose(new_pose)
         self.last_pan_camera_angle = angle 
 
     def tilt_follower(self):
         angle = self.cam_to_tag_angle
-        if abs(angle-self.last_camera_angle) > 0.1:
-            rospy.loginfo('Tilt to %s radians', angle)
-            new_pose = {'joint_head_tilt': angle}
-            self.move_to_pose(new_pose)
+        new_pose = {'joint_head_tilt': angle}
+        self.move_to_pose(new_pose)
         self.last_camera_angle = angle
 
 
@@ -185,7 +174,7 @@ class ReplicationController(hm.HelloNode):
         command = {'joint': 'joint_head_pan', 'delta': self.delta}
         self.send_command(command)
 
-#Joiint control 
+    #Joiint control 
     def send_command(self, command):
         """
         Handles single joint control commands by constructing a FollowJointTrajectoryMessage and sending it to
@@ -207,9 +196,7 @@ class ReplicationController(hm.HelloNode):
                 inc = command['inc']
                 new_value = inc
             #Based on change in value 
-            elif 'delta' in command:
-                rospy.loginfo('Rotating %s', joint_name)
-                
+            elif 'delta' in command:          
                 #Check index and get value from position list
                 joint_index = joint_state.name.index(joint_name)
                 joint_value = joint_state.position[joint_index]
@@ -274,18 +261,17 @@ class ReplicationController(hm.HelloNode):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
-
-        #self.switch_to_position_mode = rospy.ServiceProxy('/switch_to_position_mode', Trigger)
-        #self.switch_to_navigation_mode = rospy.ServiceProxy('/switch_to_navigation_mode', Trigger)
-        rate = rospy.Rate(30) # 10hz
+        rate = rospy.Rate(10) # 10hz
         #Set intial pose of camera
         pose = {'joint_head_tilt': -math.pi/4, 'joint_head_pan': 0}
         self.move_to_pose(pose)
         while not rospy.is_shutdown():
             self.find_tag()
             self.update_camera_angle()
-            self.moveBase()
+            if not self.search_flag and "nav" in self.current_state:
+                self.moveBase()
             self.tableCommand()
+            rospy.loginfo("Current state %s", self.current_state)
             rate.sleep()
          
 if __name__ == '__main__':
