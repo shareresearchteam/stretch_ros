@@ -40,7 +40,7 @@ class ReplicationController(hm.HelloNode):
         self.delta = (max_pan - min_pan) / 10
         self.search_flag = False
         #For state control
-        self.current_state = "table"
+        self.current_state = "nav_1"
         self.current_state_index = 0
         self.states = ["nav_1","nav_2","table","nav_4","nav_5"]
         
@@ -73,6 +73,7 @@ class ReplicationController(hm.HelloNode):
             else:
                 #Increment State 
                 self.state_manager()
+                print(self.current_state)
 
     #Droping off functions 
 
@@ -84,12 +85,19 @@ class ReplicationController(hm.HelloNode):
 
     def tableCommand(self):
         if self.current_state == "table":
-            self.align_to_surface()
+            #self.align_to_surface()
             length = 0.1
-            shape  = [[0,0.5,-0.4,0,0],[0,0.5,-0.4,0,0.4],[0,0.5,-0.4,0,-0.4],[0,0.5,-0.4,0,0],[0,0.5,-0.4,-pi/4,0],[0,0.5,-0.4,-pi/4,0],
-                             [0,0.8,-0.4,-pi/4,0],[length,0.8,2.2,-pi/4,0],[length,0.7,2.2,-pi/4,0],
-                             [length,0.8,2.2,-pi/4,0], [0,0.8,-0.4,0,0], [0,0.5,-0.4,0,0]]
+            hold_angle = 0.2
+            drop_angle = -0.9
+            max_extend = 1
+            forward_wrist = 1.65
+            out_wrist = 0
+            shape  = [[0,0.5,forward_wrist,hold_angle], [0,0.9,forward_wrist,hold_angle], [0.3,0.9,out_wrist,hold_angle],[0.3,0.9,out_wrist,drop_angle]]
             self.issue_multipoint_command(shape)
+            shape.reverse()
+            rospy.sleep(1)
+            self.issue_multipoint_command(shape)
+            rospy.sleep(1)
             self.state_manager()
 
 
@@ -220,7 +228,7 @@ class ReplicationController(hm.HelloNode):
         converted_shape = []
         for point in shape:
             trajectory = JointTrajectoryPoint()
-            trajectory.positions = [point[0], point[1],point[2], point[3], point[4]]
+            trajectory.positions = [point[0], point[1],point[2], point[3]]
             converted_shape.append(trajectory)
         return converted_shape
 
@@ -257,9 +265,9 @@ class ReplicationController(hm.HelloNode):
         rospy.Subscriber('/stretch/joint_states', JointState, self.joint_states_callback)
         self.r = rospy.Rate(rospy.get_param('~rate', 10.0))
 
-        rospy.wait_for_service('/funmap/trigger_align_with_nearest_cliff')
-        rospy.loginfo('Node ' + self.node_name + ' connected to /funmap/trigger_align_with_nearest_cliff.')
-        self.trigger_align_with_nearest_cliff_service = rospy.ServiceProxy('/funmap/trigger_align_with_nearest_cliff', Trigger)
+        #rospy.wait_for_service('/funmap/trigger_align_with_nearest_cliff')
+        #rospy.loginfo('Node ' + self.node_name + ' connected to /funmap/trigger_align_with_nearest_cliff.')
+        #self.trigger_align_with_nearest_cliff_service = rospy.ServiceProxy('/funmap/trigger_align_with_nearest_cliff', Trigger)
 
 
         self.static_broadcaster = tf2_ros.StaticTransformBroadcaster()
